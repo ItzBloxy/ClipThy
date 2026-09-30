@@ -28,9 +28,11 @@ The main quality bar is "lightweight": near-zero CPU, a few hundred MB of RAM at
 **Displays and capture**
 - Both monitors are driven by the RTX 3070: DISPLAY1 is 2560×1440 @ 240 Hz (primary) and DISPLAY2 is 1920×1080 @ 240 Hz. The AMD iGPU drives no display.
 - `ddagrab` with `output_idx=0` opens the 2560×1440 primary display. Frames stay on the GPU all the way to the encoder.
-- ddagrab tops out at exactly **64 fps** here. That is one tick of Windows' default 15.625 ms timer, which suggests ffmpeg paces capture on that timer.
-- At 60 fps, 0.3–3 % of frames were missing per run on an idle desktop, regardless of encoder; one run reached 5–8 %. Capture alone (no encoder) delivered 594 of 600 frames. On a still desktop a missing frame looks identical to its neighbours, so this is invisible there.
-- **Under motion** (a 240 fps test pattern on the primary monitor, light GPU load, NVENC): 4 single-frame gaps in 13 s, which is **0.5 %** and within the ≤ 1 % target. No two frames in a row went missing. In the same run ffmpeg used 1.1 % of one core and had a 130 MB working set. A GPU-heavy game is still untested (§11).
+- **Frame pacing and the Windows timer:**
+  - ddagrab paces capture with `Sleep()`. On Windows' default 15.625 ms timer it can't hit a 16.7 ms frame grid reliably, and it skips a frame whenever it falls more than one frame behind. It tops out at about 64–79 fps here.
+  - On the real desktop at 60 fps, **4–5 % of frames were skipped** by default (1.4–3.4 % in other tests; 0.14 % at 30 fps). The cause is the same with either encoder.
+  - Timer resolution has been per-process since Windows 10 2004. ClipThy raising its own timer doesn't help ffmpeg (verified). A registry switch that restores global behaviour appears to be Windows 11-only.
+  - **Fix (§5.2):** ClipThy makes its ffmpeg request a 1 ms timer. Measured on the real desktop: **0 skipped frames in 2 × 30 s**, and ffmpeg CPU fell from about 1.5–2 % to 0.6 % of a core.
 - This ffmpeg build has no `gfxcapture` source, so ddagrab is the only GPU capture source.
 
 **Encoder**
@@ -143,6 +145,10 @@ Each unit has one job and can be tested on its own.
 **`VideoCapture`** runs the capture ffmpeg.
 - It builds the command in §5.3 and runs ffmpeg as a child process at normal priority, inside a Windows Job Object with kill-on-close, so ffmpeg never outlives the app.
 - It streams stdout into `VideoBuffer`, drains stderr continuously (an undrained pipe would stall ffmpeg), and keeps the last 50 stderr lines for the log.
+- **1 ms timer for ffmpeg:** right after starting ffmpeg, `ProcessTimerResolution` starts one thread inside it that calls `kernel32!timeBeginPeriod(1)`.
+  - kernel32 is mapped at the same address in every process, so nothing is written into ffmpeg.
+  - The request ends automatically when ffmpeg exits.
+  - If the call fails (for example because security software blocks it), capture continues on the default timer and the reason is logged.
 - **Encoder choice:**
   - With `encoder: "auto"` (the default), it starts with NVENC.
   - If ffmpeg's stderr shows that NVENC couldn't start, it switches to Media Foundation for the rest of the session and shows one notification suggesting a driver update. Examples of such messages: "Driver does not support the required nvenc API version", "minimum required Nvidia driver", "Could not open encoder". Such a failure can come back after an ffmpeg upgrade that needs a newer driver.
@@ -304,6 +310,7 @@ Known behaviour:
 | Situation | Behaviour |
 |---|---|
 | ffmpeg exits, or outputs no packets for 3 s (resolution change, UAC secure desktop, driver reset) | Restart with backoff and clear the video buffer. The tooltip shows "restarting". After 5 failures in a row, **one** notification per failure streak, with ffmpeg's last error line |
+| ffmpeg can't be given the 1 ms timer (for example blocked by security software) | Capture continues on the default timer, and the log says so. Expect about 4–5 % skipped frames at 60 fps |
 | NVENC can't start (for example an ffmpeg upgrade needs a newer NVIDIA driver) | `auto`: switch to Media Foundation for this session, with one notification suggesting a driver update. `nvenc`: error notification and error tooltip |
 | Session locked | Capture stops. There is no failure notification, and capture restarts on unlock |
 | Sleep/resume, display settings change, system clock change | Restart video capture right away. On resume, audio capture is reopened too |
@@ -352,6 +359,7 @@ Implementation notes for lightness:
 - Pooled buffers, so there are no per-packet allocations.
 - Workstation non-concurrent GC.
 - The export ffmpeg runs at below-normal priority.
+- The 1 ms timer that ffmpeg requests makes Windows tick faster while ClipThy records. That costs slightly more idle power, which is negligible on a desktop; many games and browsers do the same.
 
 ## 10. Testing
 
@@ -386,6 +394,10 @@ Implementation notes for lightness:
 - **PTS wraparound:** use `-output_ts_offset` to push the stream across the 33-bit wrap mid-clip. The exported MP4 must be continuous with the correct duration.
 - **Restart:** killing ffmpeg triggers a restart and clears the video buffer.
 
+**Hardware tests** (need a real microphone, speakers and display):
+- Microphone and loopback packets carry current timestamps.
+- `Desktop_capture_keeps_a_steady_60_fps` runs the production desktop capture into memory only for about 8 s. Its frames are never saved; the test reads their timestamps and requires ≤ 1 % skipped 1/60 slots. It failed at 2.4 % before the timer fix.
+
 **Sync and smoothness test:**
 - `ClipThy.exe --sync-test` shows a window on the primary monitor that flashes white and beeps at the same moment once per second. It plays the beep through the default output device.
 - `tools\sync-check.ps1` analyses a saved clip with ffmpeg and prints:
@@ -412,12 +424,10 @@ Implementation notes for lightness:
    - play music and confirm its volume doesn't drop.
 
    If it can't be avoided in code, the documented fix is Sound settings → Communications → "Do nothing".
-2. **Dropped frames under GPU load.** Measured so far (§3):
-   - idle desktop: 0.3–3 % per run, once 5–8 %;
-   - a moving test pattern at light GPU load: 0.5 %, only single-frame gaps.
-
-   The likely cause is ffmpeg pacing capture on Windows' default 15.625 ms timer. Still to measure: a GPU-heavy game, with the smoothness test.
-   - If missing frames are visible there, the fix is outside ffmpeg's options: for example, ClipThy doing the capture itself and feeding ffmpeg. That would be a design change to bring back to the user.
+2. **Dropped frames at 60 fps — resolved (2026-09-30).**
+   - **Cause:** ffmpeg's `Sleep()`-based pacing on the default 15.6 ms timer, which skipped 4–5 % of frames on the real desktop.
+   - **Fix:** the per-process 1 ms timer (§5.2), which brought it to 0 skipped frames in 2 × 30 s.
+   - **Still to check:** smoothness in a GPU-heavy game with `sync-check.ps1`, because GPU contention could add other delays.
 3. **Colours in players.** NVENC's BT.601 matrix is tagged correctly (§3). A player that ignores the tag would shift colours. Check playback in Discord, a browser and Windows Photos.
 4. **Display-mode changes and the secure desktop.** Find out whether ddagrab exits with an error or freezes. The 3 s stall watchdog covers both.
 5. **Clock agreement between ffmpeg and .NET** (measured within about ±25 ms). The sync test verifies it. If it shows a stable bias, add a constant correction setting.
