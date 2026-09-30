@@ -259,6 +259,10 @@ public sealed class VideoCapture : IDisposable
         try { _job?.Add(process); }
         catch (Win32Exception ex) { _log($"Could not add ffmpeg to the job object: {ex.Message}"); }
 
+        // ffmpeg paces capture with Sleep(); give it a 1 ms timer or it skips ~4-5 % of frames at 60 fps.
+        bool fineTimer = ProcessTimerResolution.TryRequest(process, 1, out string? timerError);
+        if (!fineTimer) _log($"Could not give ffmpeg a 1 ms timer ({timerError}); 60 fps capture may skip frames.");
+
         _buffer.Clear();
         lock (_lock)
         {
@@ -266,7 +270,7 @@ public sealed class VideoCapture : IDisposable
             if (_disposed || _paused || _restartRequested) KillCurrent();
         }
         process.BeginErrorReadLine();
-        _log($"Capture ffmpeg started (pid {process.Id}, {encoder}).");
+        _log($"Capture ffmpeg started (pid {process.Id}, {encoder}, {(fineTimer ? "1 ms timer" : "default timer")}).");
 
         bool produced = false;
         Interlocked.Exchange(ref _lastPacketQpc, Stopwatch.GetTimestamp());
