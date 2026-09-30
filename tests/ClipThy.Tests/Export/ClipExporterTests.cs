@@ -132,6 +132,20 @@ public class ClipExporterTests : IDisposable
     }
 
     [Fact]
+    public async Task A_finished_save_gives_its_memory_back()
+    {
+        _video.Newest = () => 200_000;
+        _video.Result = new VideoSnapshot(new byte[20_000_000], 70_000, 99_990, 1);
+        ClipExporter exporter = NewExporter();
+        int fullCollectionsBefore = GC.CollectionCount(GC.MaxGeneration);
+
+        Assert.Equal(SaveRequestOutcome.Accepted, exporter.RequestSave(SaveMode.Mixed));
+        await exporter.WhenIdleAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(GC.CollectionCount(GC.MaxGeneration) > fullCollectionsBefore, "expected a full GC after the last pending save");
+    }
+
+    [Fact]
     public void CleanTempRoot_removes_leftover_folders()
     {
         Directory.CreateDirectory(Path.Combine(TempRoot, "left-over"));

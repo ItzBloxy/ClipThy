@@ -80,7 +80,8 @@ public sealed class ClipExporter
         long pressQpc = _clock.QpcNow;
         DateTime pressLocal = _clock.UtcNow.ToLocalTime();
         AppSettings settings = _settings();
-        Task task = Task.Run(() => SaveAsync(mode, pressQpc, pressLocal, settings));
+        Task task = Task.Run(() => SaveAsync(mode, pressQpc, pressLocal, settings))
+            .ContinueWith(_ => ReleaseMemoryWhenIdle(), TaskScheduler.Default);
         lock (_running)
         {
             _running.RemoveAll(t => t.IsCompleted);
@@ -93,6 +94,17 @@ public sealed class ClipExporter
     public Task WhenIdleAsync()
     {
         lock (_running) return Task.WhenAll(_running.ToArray());
+    }
+
+    /// <summary>
+    /// A save copies tens of MB into large arrays and then drops them. Workstation GC can keep that memory committed
+    /// for a long time (the tray app sat at ~250 MB after one save), so once the last pending save has finished,
+    /// run one full collection that hands the memory back to Windows. Live data is only ~20 MB, so it takes milliseconds.
+    /// </summary>
+    private void ReleaseMemoryWhenIdle()
+    {
+        if (Pending > 0) return;
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
     }
 
     /// <summary>Deletes temp folders left behind by a previous run (for example after a crash).</summary>
