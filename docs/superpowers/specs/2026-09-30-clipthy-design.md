@@ -20,7 +20,7 @@ The main quality bar is "lightweight": near-zero CPU, a few hundred MB of RAM at
 | Alt+F10 | Save a clip with one mixed audio track |
 | Alt+F11 | Save a clip with three audio tracks: 1 Mix, 2 System, 3 Mic |
 | Output | `C:\Users\BLOXY\Documents\ShareX\Screenshots\yyyy-MM\clip_yyyy-MM-dd_HH-mm-ss.mp4` |
-| Feedback | Short sound + Windows notification; clicking it shows the file in Explorer |
+| Feedback | Soft chime + Windows notification; clicking it (or left-clicking the tray icon) shows the clip in Explorer |
 | Stack | .NET 10 WinForms tray app + NAudio + ffmpeg 8.0 (on PATH) |
 
 ## 3. Environment facts (measured on the target PC, 2026-09-30)
@@ -296,7 +296,14 @@ Menu:
 
 Tooltip: one of `ClipThy – recording (30 s, NVENC)`, `ClipThy – paused (locked)`, `ClipThy – restarting capture…` or `ClipThy – error: <short reason>`. The icon is a red dot while recording and grey otherwise.
 
-On save, a short sound plays (if `playSound` is true) and a notification appears, such as "Clip saved – 30 s". The notification shows the actual length, for example 12 s just after startup. Clicking it opens Explorer with the file selected. If a save fails, the notification gives the reason and no sound plays.
+On save, a soft chime plays (if `playSound` is true) and a notification appears, such as "Clip saved – 30 s".
+- **The chime:** two notes, C5 then G5, about 0.8 s, with a bell-like fade at a quarter of full volume. You picked it by ear.
+- **The notification** shows the actual length, for example 12 s just after startup.
+- **Showing the clip:** clicking the notification opens Explorer with the clip selected, and so does left-clicking the tray icon, which shows the last saved clip.
+  - Before the first save, clicking the icon opens the clips folder instead.
+  - The icon click is a fallback for notifications that Windows has already moved into Action Center.
+  - ClipThy lets Explorer come to the front and selects the file with the shell's `SHOpenFolderAndSelectItems`, because a background app that just starts explorer.exe usually gets the window opened behind everything.
+- **If a save fails,** the notification gives the reason and no sound plays.
 
 Changing the clip length to a shorter one takes effect immediately. Changing it to a longer one fills up over time.
 
