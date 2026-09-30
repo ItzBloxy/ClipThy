@@ -29,7 +29,8 @@ The main quality bar is "lightweight": near-zero CPU, a few hundred MB of RAM at
 - Both monitors are driven by the RTX 3070: DISPLAY1 is 2560×1440 @ 240 Hz (primary) and DISPLAY2 is 1920×1080 @ 240 Hz. The AMD iGPU drives no display.
 - `ddagrab` with `output_idx=0` opens the 2560×1440 primary display. Frames stay on the GPU all the way to the encoder.
 - ddagrab tops out at exactly **64 fps** here. That is one tick of Windows' default 15.625 ms timer, which suggests ffmpeg paces capture on that timer.
-- At 60 fps, 0.3–3 % of frames were missing per run on an idle desktop, regardless of encoder; one run reached 5–8 %. Capture alone (no encoder) delivered 594 of 600 frames. On a still desktop a missing frame looks identical to its neighbours, so this is invisible there. See §11 for motion.
+- At 60 fps, 0.3–3 % of frames were missing per run on an idle desktop, regardless of encoder; one run reached 5–8 %. Capture alone (no encoder) delivered 594 of 600 frames. On a still desktop a missing frame looks identical to its neighbours, so this is invisible there.
+- **Under motion** (a 240 fps test pattern on the primary monitor, light GPU load, NVENC): 4 single-frame gaps in 13 s, which is **0.5 %** and within the ≤ 1 % target. No two frames in a row went missing. In the same run ffmpeg used 1.1 % of one core and had a 130 MB working set. A GPU-heavy game is still untested (§11).
 - This ffmpeg build has no `gfxcapture` source, so ddagrab is the only GPU capture source.
 
 **Encoder**
@@ -410,7 +411,11 @@ Implementation notes for lightness:
    - play music and confirm its volume doesn't drop.
 
    If it can't be avoided in code, the documented fix is Sound settings → Communications → "Do nothing".
-2. **Dropped frames under motion.** On an idle desktop, 0.3–3 % of frames go missing per run, once 5–8 %, with either encoder (§3). The likely cause is ffmpeg pacing capture on Windows' default 15.625 ms timer. Measure this in a GPU-heavy game with the smoothness test.
+2. **Dropped frames under GPU load.** Measured so far (§3):
+   - idle desktop: 0.3–3 % per run, once 5–8 %;
+   - a moving test pattern at light GPU load: 0.5 %, only single-frame gaps.
+
+   The likely cause is ffmpeg pacing capture on Windows' default 15.625 ms timer. Still to measure: a GPU-heavy game, with the smoothness test.
    - If missing frames are visible there, the fix is outside ffmpeg's options: for example, ClipThy doing the capture itself and feeding ffmpeg. That would be a design change to bring back to the user.
 3. **Colours in players.** NVENC's BT.601 matrix is tagged correctly (§3). A player that ignores the tag would shift colours. Check playback in Discord, a browser and Windows Photos.
 4. **Display-mode changes and the secure desktop.** Find out whether ddagrab exits with an error or freezes. The 3 s stall watchdog covers both.
