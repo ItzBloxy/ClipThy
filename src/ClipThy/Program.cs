@@ -12,6 +12,12 @@ internal static class Program
             new FileLog(FileLog.DefaultPath).Write($"Unhandled exception: {e.ExceptionObject}");
         ApplicationConfiguration.Initialize();
 
+        if (args.Contains("--sync-test", StringComparer.OrdinalIgnoreCase))
+        {
+            Application.Run(new SyncTestForm());
+            return;
+        }
+
         using var singleInstance = new Mutex(initiallyOwned: true, @"Local\ClipThy", out bool isFirstInstance);
         if (!isFirstInstance) return;
         Application.Run(new TrayApp());
