@@ -1,7 +1,7 @@
 # ClipThy — Design Spec
 
 **Date:** 2026-09-30
-**Status:** Design approved in brainstorming. Revision 2 follows a self-review that measured the pipeline on the target PC. The written spec is pending user review.
+**Status:** Design approved in brainstorming. Revision 3 moves to NVENC after the NVIDIA driver update, with all encoder facts re-measured on the target PC. The written spec is pending user review.
 
 ## 1. Goal
 
@@ -15,7 +15,7 @@ The main quality bar is "lightweight": near-zero CPU, a few hundred MB of RAM at
 |---|---|
 | Captured | Primary monitor (DISPLAY1, 2560×1440) + system audio + default microphone |
 | Frame rate | 60 fps |
-| Video codec | H.264 on the RTX 3070's hardware encoder, driven through Media Foundation (`h264_mf`); see §3 for why not `h264_nvenc`. 20 Mbps by default |
+| Video codec | H.264 on the RTX 3070's NVENC (`h264_nvenc`), 20 Mbps VBR. If NVENC can't start, it falls back automatically to Media Foundation (`h264_mf`) on the same chip |
 | Clip length | Chosen in the tray menu: 15 / 30 / 60 / 120 s; default 30 s |
 | Alt+F10 | Save a clip with one mixed audio track |
 | Alt+F11 | Save a clip with three audio tracks: 1 Mix, 2 System, 3 Mic |
@@ -28,24 +28,31 @@ The main quality bar is "lightweight": near-zero CPU, a few hundred MB of RAM at
 **Displays and capture**
 - Both monitors are driven by the RTX 3070: DISPLAY1 is 2560×1440 @ 240 Hz (primary) and DISPLAY2 is 1920×1080 @ 240 Hz. The AMD iGPU drives no display.
 - `ddagrab` with `output_idx=0` opens the 2560×1440 primary display. Frames stay on the GPU all the way to the encoder.
-- ddagrab tops out at about 64 fps on this PC, so 60 fps is close to its ceiling. About 0.3 % of frames were dropped on an idle desktop.
+- ddagrab tops out at exactly **64 fps** here. That is one tick of Windows' default 15.625 ms timer, which suggests ffmpeg paces capture on that timer.
+- At 60 fps, 0.3–3 % of frames were missing per run on an idle desktop, regardless of encoder; one run reached 5–8 %. Capture alone (no encoder) delivered 594 of 600 frames. On a still desktop a missing frame looks identical to its neighbours, so this is invisible there. See §11 for motion.
+- This ffmpeg build has no `gfxcapture` source, so ddagrab is the only GPU capture source.
 
 **Encoder**
-- The NVIDIA driver is **566.14**. ffmpeg 8.0.1's `h264_nvenc` needs NVENC API 13.0, which means driver ≥ 570, so it fails to open.
-- `h264_mf` uses the same encoder chip through Windows ("NVIDIA H.264 Encoder MFT"). It doesn't depend on the NVENC SDK version, so it also survives the pending winget upgrade to ffmpeg 9.0.2.
-- Measured with the capture command in §5.2:
-  - ffmpeg uses about 3 % of one CPU core and has a 65–75 MB working set.
+- The NVIDIA driver is **617.14** (updated 2026-09-30). ffmpeg 8.0.1's `h264_nvenc` needs driver ≥ 570.
+- Measured with the capture command in §5.3:
+  - ffmpeg uses about 2–3 % of one CPU core and has a working set of about 115 MB.
   - There is a keyframe exactly every 60 frames and there are no B-frames.
-  - The 20 Mbps target is honoured: a moving 1440p test pattern came out at 21.2 Mbps including TS overhead.
-- Media Foundation holds frames for about **0.35–0.44 s** before releasing them. This is a fixed pipeline depth, not a throughput limit: the encoder alone does 370 fps at 1440p.
+  - Encoder delay (capture → packet reaches the reader) is about 10–80 ms.
+  - The 20 Mbps target is honoured: a moving 1440p test pattern came out at 22.3 Mbps including TS overhead.
+- **Colours:**
+  - NVENC converts RGB with the BT.601 matrix and tags the stream `bt470bg`, limited range.
+  - Decoded according to that tag, colours match the source (37.4 dB PSNR). A player that assumed BT.709 instead would shift them visibly (24.0 dB).
+  - ffmpeg takes the primaries and transfer tags from the frames and silently ignores output options such as `-color_primaries`. The capture graph therefore sets them with `setparams`. Verified: output is `bt709` primaries/transfer with the `bt470bg` matrix.
+- `h264_mf` also works on this driver, which makes it the fallback. It is zero-copy, uses 3–4 % of one core, has an 80 MB working set, and a delay of about 35 ms. On the old 566 driver it held frames for about 0.4 s.
 
 **Timestamps**
 - ddagrab's own timestamps count from when ffmpeg started, so on their own they can't be matched to audio.
 - With `-copyts -use_wallclock_as_timestamps 1`, each frame instead carries the system (UTC) time at which it was captured, before encoding.
 - That clock agrees with .NET's `DateTime.UtcNow` within about ±25 ms, with no drift.
+- ffmpeg rounds the timestamps to the encoder's 1/60 s time base, so each is within ±8 ms of the true capture time.
 
 **Cutting**
-- Cutting the MPEG-TS stream at a keyframe and putting the latest PAT/PMT in front gives a valid MP4. Tested: exact frame count, starts on an I-frame, no decode errors.
+- Cutting the MPEG-TS stream at a keyframe and putting the latest PAT/PMT in front gives a valid MP4 with both encoders. Tested: exact frame count (240 frames = 4.000 s), starts on an I-frame, no decode errors.
 
 **Audio**
 - ffmpeg has **no WASAPI input**, so it can't capture system audio. The app captures audio itself.
@@ -58,7 +65,7 @@ The main quality bar is "lightweight": near-zero CPU, a few hundred MB of RAM at
 - Desktop apps are allowed to use the microphone. Windows communications ducking is at its default setting: reduce other sounds by 80 %.
 
 **Other**
-- ffmpeg 8.0.1 (gyan.dev full build) on PATH also has `amix`, `alimiter` and `scale_d3d11`.
+- ffmpeg 8.0.1 (gyan.dev full build) on PATH also has `amix`, `alimiter`, `setparams` and `scale_d3d11`. winget has an upgrade to 9.0.2 pending.
 - .NET SDK 10.0.203 and the Windows Desktop runtime 10.0.7 are installed.
 - The ShareX folder already uses `yyyy-MM` subfolders and `clip_yyyy-MM-dd_HH-mm-ss` file names.
 
@@ -72,12 +79,11 @@ The main quality bar is "lightweight": near-zero CPU, a few hundred MB of RAM at
 - Pause/resume
 - HEVC, AV1 or HDR
 - Per-application audio capture
-- A direct NVENC path (it would need a driver update and gains little)
 
 ## 5. Architecture
 
 ```
-Primary monitor ─ ddagrab ─► h264_mf ─► MPEG-TS on stdout ─► VideoBuffer   (compressed, RAM)
+Primary monitor ─ ddagrab ─► h264_nvenc ─► MPEG-TS on stdout ─► VideoBuffer   (compressed, RAM)
   (ffmpeg child process, video only; every frame stamped with its UTC capture time)
 
 System audio ─ WASAPI loopback ─► AudioBuffer "system"   (PCM + capture timestamps, RAM)
@@ -89,7 +95,7 @@ Hotkey ─► ClipExporter: cut the video at a keyframe N s back, cut both audio
 
 Audio never goes through the capture ffmpeg process. Every buffer is indexed by **capture time on one timeline**, and the exporter aligns the three streams on that timeline at save time. This design:
 
-- makes sync independent of how long the encoder holds frames (about 0.4 s);
+- makes sync independent of encoder delay, which differs by encoder and driver (§3);
 - makes long-run clock drift irrelevant, because alignment happens per clip over at most about 2 minutes;
 - lets an audio device change happen without ever restarting video capture;
 - avoids continuous audio encoding, because audio is encoded only when a clip is saved.
@@ -103,7 +109,7 @@ The timeline is QPC ticks from `Stopwatch.GetTimestamp()`.
   - `delay = (arrivalUtc90k − pts) mod 2³³`
   - `captureQpc = arrivalQpc − delay`
 
-  This is exact apart from the ±25 ms clock agreement, and it also handles the wraparound.
+  This is accurate to about ±25 ms overall and also handles the wraparound.
 - **Sanity check:** a delay outside 0–5 s means the timestamps aren't what we expect. The frame then uses its arrival time and a warning is logged.
 - **Clock changes:** a change to the system clock (`SystemEvents.TimeChanged`) restarts video capture.
 
@@ -135,6 +141,10 @@ Each unit has one job and can be tested on its own.
 **`VideoCapture`** runs the capture ffmpeg.
 - It builds the command in §5.3 and runs ffmpeg as a child process at normal priority, inside a Windows Job Object with kill-on-close, so ffmpeg never outlives the app.
 - It streams stdout into `VideoBuffer`, drains stderr continuously (an undrained pipe would stall ffmpeg), and keeps the last 50 stderr lines for the log.
+- **Encoder choice:**
+  - With `encoder: "auto"` (the default), it starts with NVENC.
+  - If ffmpeg's stderr shows that NVENC couldn't start, it switches to Media Foundation for the rest of the session and shows one notification suggesting a driver update. Examples of such messages: "Driver does not support the required nvenc API version", "minimum required Nvidia driver", "Could not open encoder". Such a failure can come back after an ffmpeg upgrade that needs a newer driver.
+  - `"nvenc"` or `"mf"` forces one encoder, with no fallback.
 - It restarts ffmpeg when:
   - ffmpeg exits;
   - there is a 3 s stall with no packets;
@@ -162,7 +172,7 @@ Each unit has one job and can be tested on its own.
 
 1. **Snapshot** (per press, right away):
    - Record the press time (`endQpc` and local time).
-   - Wait until `VideoBuffer.NewestCaptureQpc ≥ endQpc`. This takes about 0.45 s because of the encoder delay, with a minimum of 100 ms so audio packets still in flight arrive, and a timeout of 2 s.
+   - Wait until `VideoBuffer.NewestCaptureQpc ≥ endQpc`. This is usually under 0.1 s with NVENC, with a minimum of 100 ms so audio packets still in flight arrive, and a timeout of 2 s.
    - Take the video snapshot.
    - Extract both audio buffers for the chunk's capture range, from its first frame to its last frame + 1 frame duration.
    - All of this is held in memory.
@@ -185,20 +195,29 @@ Each unit has one job and can be tested on its own.
 
 ### 5.3 ffmpeg commands (tested on the target PC)
 
-Capture (video only):
+Capture (video only) with NVENC:
 
 ```
 ffmpeg -hide_banner -nostdin -nostats -loglevel warning
   -copyts -use_wallclock_as_timestamps 1
-  -f lavfi -i ddagrab=output_idx=0:framerate=60:draw_mouse=1
-  -c:v h264_mf -hw_encoding 1 -scenario live_streaming -b:v 20M -g 60
+  -f lavfi -i ddagrab=output_idx=0:framerate=60:draw_mouse=1,setparams=color_primaries=bt709:color_trc=bt709
+  -c:v h264_nvenc -preset p4 -tune ll -rc vbr -b:v 20M -maxrate 30M -bufsize 40M -g 60 -bf 0 -delay 0
   -muxdelay 0 -muxpreload 0
   -f mpegts -flush_packets 1 pipe:1
 ```
 
+Media Foundation fallback: the same command with the encoder options replaced by:
+
+```
+  -c:v h264_mf -hw_encoding 1 -scenario live_streaming -b:v 20M -g 60
+```
+
 - `-copyts -use_wallclock_as_timestamps 1 -muxdelay 0 -muxpreload 0` makes every PTS the frame's UTC capture time (§5.1).
-- `-hw_encoding 1` refuses Microsoft's software H.264 encoder, so a missing hardware encoder is reported as an error instead of silently eating CPU.
+- `-tune ll -bf 0 -delay 0`: no B-frames and no output delay, so packets reach ClipThy tens of ms after capture and saves start almost immediately.
+- `-maxrate 30M` caps bursts above the 20 Mbps average.
 - `-g` is set to the configured fps, which gives a keyframe every second so clips start within 1 s of the requested length.
+- `setparams` tags BT.709 primaries and transfer. NVENC tags the BT.601 matrix it actually uses. Output options can't set these tags (§3).
+- `-hw_encoding 1` (Media Foundation only) refuses Microsoft's software H.264 encoder, so a missing hardware encoder is reported as an error instead of silently eating CPU.
 
 Export, mixed (Alt+F10):
 
@@ -224,6 +243,7 @@ Export, multitrack (Alt+F11): uses the same filter and adds:
   - `latency=1` compensates its 5 ms lookahead, which would otherwise shift the audio.
 - MP4 stores track names in `handler_name`; the `title` tag is dropped.
 - Track 1 (Mix) is the default track, so players that only play one track still play everything.
+- The video is stream-copied, so its colour tags carry over.
 
 ## 6. Settings
 
@@ -235,6 +255,7 @@ The settings file is `%APPDATA%\ClipThy\config.json`. It is created with these d
   "hotkeyMixed": "Alt+F10",
   "hotkeyMultitrack": "Alt+F11",
   "outputRoot": "C:\\Users\\BLOXY\\Documents\\ShareX\\Screenshots",
+  "encoder": "auto",
   "fps": 60,
   "videoBitrateMbps": 20,
   "playSound": true,
@@ -242,7 +263,12 @@ The settings file is `%APPDATA%\ClipThy\config.json`. It is created with these d
 }
 ```
 
-- **Validation:** `clipSeconds` must be 5–120, `fps` must be 30 or 60, and `videoBitrateMbps` must be 2–100. An invalid value falls back to its default and shows a warning.
+- **Validation:**
+  - `clipSeconds` must be 5–120.
+  - `encoder` must be `auto`, `nvenc` or `mf`.
+  - `fps` must be 30 or 60.
+  - `videoBitrateMbps` must be 2–100. `maxrate` is 1.5× this value and `bufsize` is 2×.
+  - An invalid value falls back to its default and shows a warning.
 - **Memory:** the RAM needed grows with clip length × bitrate (§9), which is why the clip length is capped at 120 s.
 - **Tray changes** (clip length) are written back immediately.
 - **Hand edits** to the file take effect the next time the app starts. The app does not watch the file.
@@ -260,7 +286,7 @@ Menu:
 - Start with Windows ✓
 - Exit (waits up to 10 s for queued exports to finish)
 
-Tooltip: one of `ClipThy – recording (30 s)`, `ClipThy – paused (locked)`, `ClipThy – restarting capture…` or `ClipThy – error: <short reason>`. The icon is a red dot while recording and grey otherwise.
+Tooltip: one of `ClipThy – recording (30 s, NVENC)`, `ClipThy – paused (locked)`, `ClipThy – restarting capture…` or `ClipThy – error: <short reason>`. The icon is a red dot while recording and grey otherwise.
 
 On save, a short sound plays (if `playSound` is true) and a notification appears, such as "Clip saved – 30 s". The notification shows the actual length, for example 12 s just after startup. Clicking it opens Explorer with the file selected. If a save fails, the notification gives the reason and no sound plays.
 
@@ -276,12 +302,13 @@ Known behaviour:
 | Situation | Behaviour |
 |---|---|
 | ffmpeg exits, or outputs no packets for 3 s (resolution change, UAC secure desktop, driver reset) | Restart with backoff and clear the video buffer. The tooltip shows "restarting". After 5 failures in a row, **one** notification per failure streak, with ffmpeg's last error line |
+| NVENC can't start (for example an ffmpeg upgrade needs a newer NVIDIA driver) | `auto`: switch to Media Foundation for this session, with one notification suggesting a driver update. `nvenc`: error notification and error tooltip |
 | Session locked | Capture stops. There is no failure notification, and capture restarts on unlock |
 | Sleep/resume, display settings change, system clock change | Restart video capture right away. On resume, audio capture is reopened too |
 | Default audio device changes or is unplugged (for example Quest Link switching the default) | `AudioCapture` reopens the new default. The gap is silent in clips |
 | No microphone, or mic access blocked in Windows privacy settings | The mic track is silent, so the track layout stays the same. One notification explains why |
 | Hotkey registration fails (for example the NVIDIA overlay owns Alt+F10) | Notification at startup naming the hotkey. "Save clip now" still works |
-| ffmpeg not found, or the hardware H.264 encoder is unavailable | Error notification and error tooltip. The app stays in the tray; fix the cause and restart the app |
+| ffmpeg not found, or no hardware H.264 encoder at all | Error notification and error tooltip. The app stays in the tray; fix the cause and restart the app |
 | Save pressed before anything is buffered (just started, or restarting) | "Nothing to save yet" notification |
 | Save pressed with less buffered than the clip length | Saves what is there. The notification shows the actual length |
 | Save pressed while 3 exports are already pending | "Still saving – try again in a moment" notification |
@@ -291,24 +318,32 @@ Known behaviour:
 | Windows HDR turned on | Colours may look washed out, because 8-bit capture is out of scope |
 
 The log is `%LOCALAPPDATA%\ClipThy\clipthy.log` and rolls over to `clipthy.1.log` at 1 MB. It records:
-- the settings at startup;
+- the settings and the encoder in use at startup;
 - restarts, with the ffmpeg stderr tail;
+- encoder fallbacks;
 - saves (path, clip length, time taken);
 - timestamp sanity warnings (§5.1);
 - errors.
 
 ## 9. Resource budget
 
-Measured (capture ffmpeg, idle desktop): about 3 % of one CPU core and a 65–75 MB working set.
+Measured (capture ffmpeg with NVENC, idle desktop): about 2–3 % of one CPU core and a working set of about 115 MB.
 
 Acceptance targets:
 - **CPU:** ≤ 2 % in Task Manager on an idle desktop, app and ffmpeg combined.
-- **RAM:** ≤ 300 MB with a 30 s clip length, app and ffmpeg combined.
-  - The video buffer is bitrate × (clip length + 2 s), which is about 80 MB at 30 s and about 305 MB at 120 s (20 Mbps, moving content). Static content uses far less.
+- **RAM:** ≤ 300 MB with a 30 s clip length, app and ffmpeg combined. The app is about 40 MB, the buffers are listed below, and ffmpeg is about 115 MB.
+  - The video buffer is bitrate × (clip length + 2 s):
+
+    | Clip length | Typical (20 Mbps) | Worst case (30 Mbps cap) |
+    |---|---|---|
+    | 30 s | ~80 MB | ~120 MB |
+    | 120 s | ~305 MB | ~460 MB |
+
+    Static content uses far less.
   - The audio buffers are about 0.38 MB/s for both streams, which is about 13 MB at 30 s and about 47 MB at 120 s.
-  - With the 120 s length, expect roughly 450 MB in total.
+  - With the 120 s length, expect about 0.5–0.7 GB in total.
 - **Games:** small FPS impact and smooth clips, measured in one GPU-heavy game.
-- **Saving:** a 30 s clip is saved in ≤ 3 s after the press. This includes the ~0.45 s wait for the encoder.
+- **Saving:** a 30 s clip is saved in ≤ 3 s after the press.
 - **Disk:** no writes except when saving and logging.
 
 Implementation notes for lightness:
@@ -325,6 +360,7 @@ Implementation notes for lightness:
   - trimming;
   - a snapshot starts on a keyframe with PAT/PMT first and ends at the right frame.
 - `AudioBuffer`: exact-span extraction, gaps becoming silence, overlaps, trimming.
+- `VideoCapture` encoder choice: recognising NVENC start-up failures from sample stderr lines, `auto` → Media Foundation fallback, and forced modes.
 - `ClipExporter` with fakes:
   - the snapshot is taken before queuing;
   - the wait for the video buffer and its timeout;
@@ -332,9 +368,9 @@ Implementation notes for lightness:
 - `OutputPaths`: month folder, naming, collisions, month rollover.
 - `Settings`: defaults, partial file, invalid values, invalid JSON.
 - Parsing hotkey strings.
-- Building export arguments for both modes.
+- Building capture and export arguments for both encoders and both modes.
 
-**Integration tests** (real ffmpeg and hardware encoder, no screen):
+**Integration tests** (real ffmpeg and hardware encoder, no screen). Run them with each encoder (NVENC and Media Foundation).
 - `testsrc2=…,realtime` replaces `ddagrab` as the input to `VideoCapture` and `VideoBuffer`. Use the `realtime` filter, **not** `-re`: `-re` stalls when combined with wall-clock timestamps (verified).
 - Synthetic sine-wave packets feed both `AudioBuffer`s.
 - Both modes are exported, then `ffprobe` checks:
@@ -343,26 +379,29 @@ Implementation notes for lightness:
   - codecs are H.264 and AAC;
   - `handler_name` values are correct;
   - only track 1 is marked as default;
+  - the video colour tags are `bt470bg` matrix with `bt709` primaries/transfer;
   - `moov` is at the front of the file (faststart).
 - **PTS wraparound:** use `-output_ts_offset` to push the stream across the 33-bit wrap mid-clip. The exported MP4 must be continuous with the correct duration.
 - **Restart:** killing ffmpeg triggers a restart and clears the video buffer.
 
-**Sync test:**
+**Sync and smoothness test:**
 - `ClipThy.exe --sync-test` shows a window on the primary monitor that flashes white and beeps at the same moment once per second. It plays the beep through the default output device.
-- `tools\sync-check.ps1` analyses a saved clip with ffmpeg. It compares brightness jumps with beep onsets and prints the mean A/V offset over all the flashes.
-- The target is |mean offset| ≤ 40 ms, both right after startup and after at least 4 h of running.
+- `tools\sync-check.ps1` analyses a saved clip with ffmpeg and prints:
+  - the mean A/V offset over all the flashes, found by comparing brightness jumps with beep onsets;
+  - the dropped-frame count, found from gaps between frame timestamps.
+- The targets are |mean offset| ≤ 40 ms and dropped frames ≤ 1 %, both right after startup and after at least 4 h of running.
 
 **Manual checklist** (on this PC):
 - the resource targets in §9;
-- colours match the screen;
+- colours look right when played in Discord, a browser and Windows Photos;
 - music keeps its volume while ClipThy runs (no communications ducking, §11);
 - headphones unplugged mid-session;
 - default mic switched, and Quest Link started and stopped;
 - lock/unlock;
 - sleep/resume;
 - resolution change;
-- clip smoothness in a GPU-heavy fullscreen game;
-- Alt+F10 does not clash with the NVIDIA overlay.
+- clip smoothness in a GPU-heavy fullscreen game, using `sync-check.ps1`'s dropped-frame count;
+- Alt+F10 does not clash with the NVIDIA overlay (Instant Replay uses the same key).
 
 ## 11. Risks to check first in implementation
 
@@ -371,8 +410,9 @@ Implementation notes for lightness:
    - play music and confirm its volume doesn't drop.
 
    If it can't be avoided in code, the documented fix is Sound settings → Communications → "Do nothing".
-2. **Colours.** Media Foundation does the BGRA→YUV conversion internally, with an unknown matrix and range. Compare a clip with the screen. If it's off, convert on the GPU first with `scale_d3d11=format=nv12`. That path works, but in a 10 s test its delay kept growing, so it needs checking before use.
-3. **Smoothness under GPU load.** ddagrab peaks at about 64 fps here and about 0.3 % of frames drop even on an idle desktop. Check clip smoothness in a GPU-heavy game.
+2. **Dropped frames under motion.** On an idle desktop, 0.3–3 % of frames go missing per run, once 5–8 %, with either encoder (§3). The likely cause is ffmpeg pacing capture on Windows' default 15.625 ms timer. Measure this in a GPU-heavy game with the smoothness test.
+   - If missing frames are visible there, the fix is outside ffmpeg's options: for example, ClipThy doing the capture itself and feeding ffmpeg. That would be a design change to bring back to the user.
+3. **Colours in players.** NVENC's BT.601 matrix is tagged correctly (§3). A player that ignores the tag would shift colours. Check playback in Discord, a browser and Windows Photos.
 4. **Display-mode changes and the secure desktop.** Find out whether ddagrab exits with an error or freezes. The 3 s stall watchdog covers both.
 5. **Clock agreement between ffmpeg and .NET** (measured within about ±25 ms). The sync test verifies it. If it shows a stable bias, add a constant correction setting.
 
