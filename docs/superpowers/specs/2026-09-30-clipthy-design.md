@@ -336,7 +336,9 @@ The log is `%LOCALAPPDATA%\ClipThy\clipthy.log` and rolls over to `clipthy.1.log
 
 ## 9. Resource budget
 
-Measured (capture ffmpeg with NVENC, idle desktop): about 2–3 % of one CPU core and a working set of about 115 MB.
+Measured with the published app (2026-09-30, 30 s clip length):
+- **CPU:** ClipThy 0.18 % and ffmpeg 0.21 % of one core, which is 0.02 % of the whole 16-thread CPU.
+- **Memory:** ClipThy about 72 MB and ffmpeg about 114 MB, **about 186 MB combined**. It is the same before and 20 s after a save.
 
 Acceptance targets:
 - **CPU:** ≤ 2 % in Task Manager on an idle desktop, app and ffmpeg combined.
@@ -359,6 +361,7 @@ Implementation notes for lightness:
 - Pooled buffers, so there are no per-packet allocations.
 - Workstation non-concurrent GC.
 - The export ffmpeg runs at below-normal priority.
+- When the last pending save finishes, one aggressive full GC hands the snapshot's memory (tens of MB of large arrays) back to Windows. Without it, the app stayed at about 250 MB after a single save. Live data is about 20 MB, so the pause is milliseconds.
 - The 1 ms timer that ffmpeg requests makes Windows tick faster while ClipThy records. That costs slightly more idle power, which is negligible on a desktop; many games and browsers do the same.
 
 ## 10. Testing
