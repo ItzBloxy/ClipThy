@@ -36,6 +36,7 @@ public sealed class TrayApp : ApplicationContext
     private AppSettings _settings;
     private CaptureStatus _status;
     private string? _balloonPath;
+    private string? _lastClipPath;
 
     public TrayApp()
     {
@@ -108,7 +109,11 @@ public sealed class TrayApp : ApplicationContext
         RebuildLengthMenu();
 
         _icon.ContextMenuStrip = menu;
-        _icon.BalloonTipClicked += (_, _) => RevealBalloonFile();
+        _icon.BalloonTipClicked += (_, _) => OnNotificationClicked();
+        _icon.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left) RevealClip(_lastClipPath, "Tray icon clicked");
+        };
         UpdateStatus(_status);
         _icon.Visible = true;
     }
@@ -160,6 +165,7 @@ public sealed class TrayApp : ApplicationContext
             return;
         }
         _log.Write($"Saved {result.Path} ({result.LengthSeconds:F1} s, {result.Mode}).");
+        _lastClipPath = result.Path;
         if (_settings.PlaySound) _saveSound.Play();
         ShowBalloon($"Clip saved – {Math.Round(result.LengthSeconds)} s", Path.GetFileName(result.Path!), ToolTipIcon.Info, result.Path);
     }
@@ -205,15 +211,30 @@ public sealed class TrayApp : ApplicationContext
         string folder = OutputPaths.MonthFolder(_settings.OutputRoot, DateTime.Now);
         if (!Directory.Exists(folder)) folder = _settings.OutputRoot;
         Directory.CreateDirectory(folder);
-        Process.Start("explorer.exe", $"\"{folder}\"");
+        ExplorerReveal.OpenFolder(folder);
     }
 
-    private void RevealBalloonFile()
+    private void OnNotificationClicked()
     {
-        if (_balloonPath is not null && File.Exists(_balloonPath))
+        if (_balloonPath is null)
         {
-            Process.Start("explorer.exe", $"/select,\"{_balloonPath}\"");
+            _log.Write("Notification clicked (it has no clip to show).");
+            return;
         }
+        RevealClip(_balloonPath, "Notification clicked");
+    }
+
+    /// <summary>Opens Explorer with the clip selected; with no clip yet, opens the clips folder instead.</summary>
+    private void RevealClip(string? path, string trigger)
+    {
+        if (path is null)
+        {
+            _log.Write($"{trigger}: no clip saved yet, opening the clips folder.");
+            OpenClipsFolder();
+            return;
+        }
+        _log.Write($"{trigger}: showing {path}");
+        if (!ExplorerReveal.TryReveal(path, out string? error)) _log.Write($"Could not show the clip: {error}");
     }
 
     private void UpdateStatus(CaptureStatus status)

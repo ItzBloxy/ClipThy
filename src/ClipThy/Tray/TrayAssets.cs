@@ -30,22 +30,11 @@ internal static class TrayAssets
         }
     }
 
-    /// <summary>An 80 ms two-note chime (48 kHz mono) with short fades so it doesn't click.</summary>
+    /// <summary>The soft "clip saved" chime (see <see cref="Chime"/>), loaded and ready to play.</summary>
     public static SoundPlayer SaveSound()
     {
-        const int rate = 48_000;
-        int frames = rate * 80 / 1000;
-        var pcm = new byte[frames * 2];
-        for (int i = 0; i < frames; i++)
-        {
-            double t = (double)i / rate;
-            double frequency = i < frames / 2 ? 880 : 1320;
-            double fade = Math.Min(1.0, Math.Min(i, frames - i) / (rate * 0.005));
-            short sample = (short)(Math.Sin(2 * Math.PI * frequency * t) * fade * 0.3 * short.MaxValue);
-            BitConverter.TryWriteBytes(pcm.AsSpan(i * 2), sample);
-        }
         var stream = new MemoryStream();
-        WavWriter.Write(stream, pcm, rate, channels: 1, bitsPerSample: 16);
+        WavWriter.Write(stream, Chime.ClipSaved(), Chime.SampleRate, channels: 1, bitsPerSample: 16);
         stream.Position = 0;
         var player = new SoundPlayer(stream);
         player.Load();
