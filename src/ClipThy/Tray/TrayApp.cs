@@ -42,7 +42,7 @@ public sealed class TrayApp : ApplicationContext
     {
         SettingsLoadResult loaded = _store.Load();
         _settings = loaded.Settings;
-        _log.Write($"ClipThy starting. Settings: {_settings}");
+        _log.Write($"ClipThy {Application.ProductVersion} starting. Settings: {_settings}");
 
         string exePath = Environment.ProcessPath!;
         if (loaded.CreatedNew || _autostart.IsEnabled) _autostart.Enable(exePath);

@@ -9,6 +9,17 @@
     <RootNamespace>ClipThy</RootNamespace>
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <ApplicationIcon>ClipThy.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>ClipThy</Product>
+    <AssemblyTitle>ClipThy</AssemblyTitle>
+    <Description>Instant replay for the Windows desktop: keeps the last seconds of screen, system audio and microphone in memory and saves them as an MP4 on a hotkey.</Description>
+    <Authors>Bloxy</Authors>
+    <Copyright>Copyright (c) 2026 Bloxy</Copyright>
+    <RepositoryUrl>https://github.com/ItzBloxy/ClipThy</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
