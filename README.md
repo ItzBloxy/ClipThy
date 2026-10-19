@@ -12,13 +12,13 @@
 </p>
 
 <p align="center">
-  <b>Something cool just happened on screen? Press <kbd>Alt</kbd>+<kbd>F10</kbd>.</b><br>
-  ClipThy sits in the tray and keeps the last 15–120 seconds of your screen, system audio and microphone in memory.<br>
-  One keypress turns them into an MP4, ready to share a second or two later.
+  <b>Press <kbd>Alt</kbd>+<kbd>F10</kbd> to save the last 30 seconds of your screen as an MP4.</b><br>
+  ClipThy sits in the tray and keeps the last 15 seconds to 2 minutes of your screen, system audio and microphone in memory,
+  so the moment you just saw is already recorded. The file is ready a second or two later.
 </p>
 
 <p align="center">
-  <a href="https://github.com/ItzBloxy/ClipThy/releases/latest"><b>⬇ Download for Windows</b></a>
+  <a href="https://github.com/ItzBloxy/ClipThy/releases/latest"><b>Download for Windows</b></a>
   &nbsp;·&nbsp; <a href="#quick-start">Quick start</a>
   &nbsp;·&nbsp; <a href="#configuration">Configuration</a>
   &nbsp;·&nbsp; <a href="#troubleshooting">Troubleshooting</a>
@@ -29,23 +29,23 @@
 
 ## Why ClipThy
 
-Big recording suites are built for streaming. ClipThy does one thing, instant replay, and tries to cost you nothing until you use it.
+Full recording suites can do instant replay, but they're made for streaming and recording. ClipThy only does instant replay, and it's built to use almost nothing while it waits.
 
 | Feature | Details |
 |---|---|
-| ⚡ **Hardware encoded** | H.264 on your GPU (NVIDIA NVENC, with an automatic Media Foundation fallback). Frames go straight from the screen to the encoder and never touch the CPU. |
-| 🍃 **Featherweight** | Measured on a 16-thread PC: **0.4 % of one CPU core** and **~190 MB of RAM** (app plus ffmpeg) with a 30 s buffer. Nothing is written to disk until you save. |
-| 🎯 **In sync, every time** | Video and both audio sources are stamped on one capture clock and aligned when you save, so encoder delay can't knock lip-sync out. Measured offset in testing: +9 ms. |
-| 🎚️ **Editor-friendly tracks** | <kbd>Alt</kbd>+<kbd>F10</kbd> saves one mixed track. <kbd>Alt</kbd>+<kbd>F11</kbd> saves three: **Mix**, **System** and **Mic**, so you can fix levels later. |
-| 🎞️ **Smooth 60 fps** | Gives ffmpeg a 1 ms Windows timer, which took skipped frames from 4–5 % to **zero** in testing. |
-| 🔁 **Hands-off** | Recovers on its own from sleep, lock/unlock, resolution changes, clock changes, ffmpeg crashes and headsets being unplugged. |
-| 📁 **ShareX-style folders** | Clips land in `Documents\ShareX\Screenshots\2026-10\clip_2026-10-19_17-42-08.mp4`. Click the notification and Explorer opens with the clip selected. |
-| 🔒 **Private by design** | No network access, no telemetry, no account. Audio and video stay in RAM until you press the hotkey. |
+| **Hardware encoded** | H.264 on your GPU (NVIDIA NVENC, with an automatic Media Foundation fallback). Raw frames stay in GPU memory from capture to encoder. |
+| **Lightweight** | Measured on a 16-thread PC: **0.4 % of one CPU core** and **~190 MB of RAM** (app plus ffmpeg) with a 30 s buffer. Nothing is written to disk until you save. |
+| **Audio in sync** | Video and both audio sources are stamped on one capture clock and aligned when you save, so encoder delay doesn't affect lip-sync. Measured offset in testing: +9 ms. |
+| **Editor-friendly tracks** | <kbd>Alt</kbd>+<kbd>F10</kbd> saves one mixed track. <kbd>Alt</kbd>+<kbd>F11</kbd> saves three: **Mix**, **System** and **Mic**, so you can fix levels later. |
+| **Smooth 60 fps** | Gives ffmpeg a 1 ms Windows timer, which took skipped frames from 4–5 % to **zero** in testing. |
+| **Recovers by itself** | Restarts capture after sleep, lock/unlock, resolution changes, clock changes and ffmpeg crashes, and follows you when you switch or unplug a headset. |
+| **ShareX-style folders** | Clips land in `Documents\ShareX\Screenshots\2026-10\clip_2026-10-19_17-42-08.mp4`. Click the notification and Explorer opens with the clip selected. |
+| **Offline** | No network access, no telemetry, no account. Audio and video stay in RAM until you press the hotkey. |
 
 ## Quick start
 
 > [!IMPORTANT]
-> ClipThy needs **ffmpeg 8** on your PATH. It isn't bundled, because you choose which build you install.
+> ClipThy needs **ffmpeg 8** on your PATH. It isn't bundled, so you choose the build and keep it up to date yourself.
 
 1. **Install ffmpeg.** The tested build is gyan.dev's full build, available through winget:
    ```powershell
@@ -55,7 +55,7 @@ Big recording suites are built for streaming. ClipThy does one thing, instant re
 
 2. **Download ClipThy** from the [latest release](https://github.com/ItzBloxy/ClipThy/releases/latest):
 
-   | Download | Size | Use it if… |
+   | Download | Size | Best for |
    |---|---|---|
    | `ClipThy-x.y.z-win-x64.zip` | ~44 MB | **Recommended.** Self-contained, so nothing else to install. |
    | `ClipThy-x.y.z-win-x64-framework-dependent.zip` | <1 MB | You already have the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |
@@ -80,32 +80,29 @@ Big recording suites are built for streaming. ClipThy does one thing, instant re
 | <kbd>Alt</kbd>+<kbd>F10</kbd> | The last *N* seconds with **one** audio track: system audio and mic mixed together. Plays everywhere. |
 | <kbd>Alt</kbd>+<kbd>F11</kbd> | The same clip with **three** audio tracks: `1 Mix` (default), `2 System`, `3 Mic`. Players use track 1; editors such as DaVinci Resolve, Premiere or Shotcut show all three. |
 
-Both are global (they work in games and fullscreen apps) and can be changed in [`config.json`](#configuration). Holding the keys down saves once. Up to three saves can queue while one is being written.
+Both are global (they work in games and fullscreen apps) and can be changed in [`config.json`](#configuration). Holding the keys down saves once. Up to three saves can be in progress at once; a fourth press gets a *Still saving* notification.
 
 ### The tray icon
 
-```
- 🔴  ClipThy – recording (30 s, NVENC)          ← tooltip
+Right-click the icon for the menu:
 
-     Clip length          ▸  15 s · 30 s ✓ · 60 s · 120 s
-     Save clip now
-     Open clips folder
-     Start with Windows   ✓
-     ─────────────────
-     Exit
-```
+| Menu item | What it does |
+|---|---|
+| **Clip length** | 15, 30, 60 or 120 s. A shorter length applies immediately; a longer one fills up as time passes. |
+| **Save clip now** | Saves a mixed clip, the same as <kbd>Alt</kbd>+<kbd>F10</kbd>. |
+| **Open clips folder** | Opens this month's clips folder, or the main clips folder if this month has none yet. |
+| **Start with Windows** | Turns autostart on or off. |
+| **Exit** | Waits up to 10 seconds for saves that are still being written, then quits. |
 
 - **Left-click** the icon to show the last clip in Explorer. Before the first save, it opens the clips folder.
-- **Red dot** means recording. **Grey** means paused (the PC is locked), restarting, or an error; hover for the reason.
-- **Clip length** applies immediately. A longer length fills up as time passes.
-- **Exit** waits up to 10 seconds for saves that are still being written.
+- **Red dot** means recording. **Grey** means paused (the PC is locked), restarting, or an error. Hover for the tooltip, for example `ClipThy – recording (30 s, NVENC)`.
 
 ### What you get
 
 | Part | Details |
 |---|---|
-| **File** | `<clips folder>\yyyy-MM\clip_yyyy-MM-dd_HH-mm-ss.mp4`, named after the moment you pressed the key. A clash gets `_2`, `_3`… |
-| **Video** | H.264, primary monitor at native resolution, 60 fps, 20 Mbps VBR, mouse cursor included |
+| **File** | `<clips folder>\yyyy-MM\clip_yyyy-MM-dd_HH-mm-ss.mp4`, named after the moment you pressed the key. If the name is taken, ClipThy adds `_2`, `_3` and so on. |
+| **Video** | H.264, primary monitor at native resolution, mouse cursor included. 60 fps and 20 Mbps VBR by default. |
 | **Audio** | AAC 192 kbps, 48 kHz stereo |
 | **Length** | The clip length you chose, extended back to the previous keyframe, so up to 1 s longer (a 30 s clip is 30.1–30.7 s) |
 | **Speed** | A 30 s clip is ready about **1–2 seconds** after the keypress. Saving happens in a temp folder, so a half-written file never appears in your clips folder. |
@@ -157,13 +154,14 @@ Settings live in **`%APPDATA%\ClipThy\config.json`**, created with these default
 
 Measured on the development PC (16 threads, RTX 3070) recording 2560×1440 at 60 fps with a 30 s clip length:
 
-| | ClipThy | ffmpeg | Together |
+| Measure | ClipThy | ffmpeg | Together |
 |---|---|---|---|
 | CPU (share of one core) | 0.18 % | 0.21 % | **0.39 %** (0.02 % of the whole 16-thread CPU) |
 | Memory (working set) | ~72 MB | ~114 MB | **~186 MB**, the same before and after a save |
-| Disk | — | — | Nothing written except when saving and logging |
 
-Most of the memory is the compressed video buffer, which grows with clip length and bitrate:
+Nothing is written to disk except the clips you save and ClipThy's small log.
+
+The part that grows is the compressed video buffer, which depends on clip length and bitrate:
 
 | Clip length | Video buffer at 20 Mbps | Worst case (30 Mbps bursts) | Audio buffers |
 |---|---|---|---|
