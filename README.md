@@ -31,10 +31,10 @@
 
 Big recording suites are built for streaming. ClipThy does one thing, instant replay, and tries to cost you nothing until you use it.
 
-|  |  |
+| Feature | Details |
 |---|---|
 | ⚡ **Hardware encoded** | H.264 on your GPU (NVIDIA NVENC, with an automatic Media Foundation fallback). Frames go straight from the screen to the encoder and never touch the CPU. |
-| 🪶 **Featherweight** | Measured on a 16-thread PC: **0.4 % of one CPU core** and **~190 MB of RAM** (app plus ffmpeg) with a 30 s buffer. Nothing is written to disk until you save. |
+| 🍃 **Featherweight** | Measured on a 16-thread PC: **0.4 % of one CPU core** and **~190 MB of RAM** (app plus ffmpeg) with a 30 s buffer. Nothing is written to disk until you save. |
 | 🎯 **In sync, every time** | Video and both audio sources are stamped on one capture clock and aligned when you save, so encoder delay can't knock lip-sync out. Measured offset in testing: +9 ms. |
 | 🎚️ **Editor-friendly tracks** | <kbd>Alt</kbd>+<kbd>F10</kbd> saves one mixed track. <kbd>Alt</kbd>+<kbd>F11</kbd> saves three: **Mix**, **System** and **Mic**, so you can fix levels later. |
 | 🎞️ **Smooth 60 fps** | Gives ffmpeg a 1 ms Windows timer, which took skipped frames from 4–5 % to **zero** in testing. |
@@ -102,7 +102,7 @@ Both are global (they work in games and fullscreen apps) and can be changed in [
 
 ### What you get
 
-| | |
+| Part | Details |
 |---|---|
 | **File** | `<clips folder>\yyyy-MM\clip_yyyy-MM-dd_HH-mm-ss.mp4`, named after the moment you pressed the key. A clash gets `_2`, `_3`… |
 | **Video** | H.264, primary monitor at native resolution, 60 fps, 20 Mbps VBR, mouse cursor included |
@@ -146,7 +146,7 @@ Settings live in **`%APPDATA%\ClipThy\config.json`**, created with these default
 
 ## Requirements
 
-| | |
+| Component | Requirement |
 |---|---|
 | **Windows** | Windows 10 or 11, 64-bit. Developed and tested on Windows 10 22H2; Windows 11 should work but hasn't been tested yet. |
 | **GPU** | A GPU with a hardware H.264 encoder. **NVIDIA** (NVENC) is tested and needs driver **570 or newer** for ffmpeg 8. AMD and Intel GPUs should work through the Media Foundation fallback but haven't been tested yet. If ClipThy doesn't switch on its own, set `"encoder": "mf"`. Reports are welcome. |
