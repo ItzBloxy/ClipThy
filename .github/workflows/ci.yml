@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build -c Release
+
+      # Integration and Hardware tests need ffmpeg, a hardware H.264 encoder, a display and audio devices,
+      # which hosted runners don't have. Run them locally (see the README).
+      - name: Unit tests
+        run: dotnet test -c Release --no-build --filter "Category!=Hardware&Category!=Integration"
+
+      - name: Package
+        shell: pwsh
+        run: ./tools/package.ps1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ClipThy-packages
+          path: dist/
+          retention-days: 14

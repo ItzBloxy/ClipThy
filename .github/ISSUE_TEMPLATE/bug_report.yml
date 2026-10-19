@@ -1,0 +1,61 @@
+name: Bug report
+description: Something doesn't record, save, sound or look right
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Include the notification text or tray tooltip if there was one.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ClipThy version
+      description: The first "ClipThy x.y.z starting" line in the log, or the release you downloaded.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which download?
+      options:
+        - Self-contained (ClipThy-x.y.z-win-x64.zip)
+        - Framework-dependent
+        - Built from source
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Run `winver`.
+      placeholder: Windows 10 22H2 (19045)
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver version
+      placeholder: NVIDIA RTX 3070, driver 617.14
+    validations:
+      required: true
+  - type: input
+    id: ffmpeg
+    attributes:
+      label: ffmpeg version
+      description: First line of `ffmpeg -version`.
+      placeholder: ffmpeg version 8.0.1-full_build-www.gyan.dev
+    validations:
+      required: true
+  - type: textarea
+    id: monitors
+    attributes:
+      label: Monitors and audio devices
+      description: Resolution and refresh rate of each monitor, HDR on or off, and your speakers/headset and microphone.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The relevant part of `%LOCALAPPDATA%\ClipThy\clipthy.log`. It contains file paths, which may include your Windows user name; edit them out if you like.
+      render: text
