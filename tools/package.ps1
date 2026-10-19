@@ -67,6 +67,7 @@ Remove-Item -Recurse -Force $staging
 $sums = foreach ($zip in $zips) {
     "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant(), (Split-Path -Leaf $zip)
 }
-[IO.File]::WriteAllLines((Join-Path $out "SHA256SUMS.txt"), [string[]]$sums)
+# LF line endings, so "sha256sum -c SHA256SUMS.txt" also works outside Windows.
+[IO.File]::WriteAllText((Join-Path $out "SHA256SUMS.txt"), ((@($sums) -join "`n") + "`n"))
 
 Get-ChildItem $out | ForEach-Object { "{0,-55} {1,8:N1} MB" -f $_.Name, ($_.Length / 1MB) }
