@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="ClipThy logo">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#282B36"/>
+      <stop offset="1" stop-color="#16181F"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="113" fill="url(#tile)"/>
+  <path d="M331 126.1 A150 150 0 1 1 181 126.1" fill="none" stroke="#ECEEF3" stroke-width="38.4"/>
+  <polygon points="279.1,96.1 364.6,87.8 314.7,174.4" fill="#ECEEF3"/>
+  <circle cx="256" cy="256" r="87" fill="#EF4444"/>
+  <circle cx="234.2" cy="229.9" r="47.9" fill="#FFFFFF" fill-opacity="0.16"/>
+</svg>

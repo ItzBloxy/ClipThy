@@ -10,7 +10,7 @@ Positive offset = audio late. The test window itself adds roughly 10-20 ms (its 
 buffer ahead of the flash being drawn), so read results with that in mind.
 
 .EXAMPLE
-powershell -ExecutionPolicy Bypass -File tools\sync-check.ps1 -Clip "C:\Users\BLOXY\Documents\ShareX\Screenshots\2026-10\clip_2026-10-01_12-00-00.mp4"
+powershell -ExecutionPolicy Bypass -File tools\sync-check.ps1 -Clip "$env:USERPROFILE\Documents\ShareX\Screenshots\2026-10\clip_2026-10-01_12-00-00.mp4"
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Clip,

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" role="img" aria-label="ClipThy: instant replay for the Windows desktop">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11131A"/>
+      <stop offset="1" stop-color="#1D202B"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E3240"/>
+      <stop offset="1" stop-color="#191B23"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#EF4444" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#EF4444" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1280" height="400" rx="24" fill="url(#bg)"/>
+
+  <!-- Logo -->
+  <circle cx="210" cy="200" r="190" fill="url(#glow)"/>
+  <g transform="translate(90 80) scale(0.46875)">
+    <rect width="512" height="512" rx="113" fill="url(#tile)"/>
+    <path d="M331 126.1 A150 150 0 1 1 181 126.1" fill="none" stroke="#ECEEF3" stroke-width="38.4"/>
+    <polygon points="279.1,96.1 364.6,87.8 314.7,174.4" fill="#ECEEF3"/>
+    <circle cx="256" cy="256" r="87" fill="#EF4444"/>
+    <circle cx="234.2" cy="229.9" r="47.9" fill="#FFFFFF" fill-opacity="0.16"/>
+  </g>
+
+  <g font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif">
+    <text x="400" y="150" font-size="92" font-weight="700" fill="#F4F5F8" letter-spacing="-1">ClipThy</text>
+    <text x="403" y="200" font-size="31" fill="#C9CCD6">Instant replay for the Windows desktop</text>
+    <text x="403" y="240" font-size="21" fill="#8C91A2">Press a hotkey and the last 30 seconds become an MP4.</text>
+  </g>
+
+  <!-- Rolling buffer: older frames fade out of memory, the newest seconds become the clip -->
+  <g>
+    <rect x="403" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.08"/>
+    <rect x="425" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.10"/>
+    <rect x="447" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.12"/>
+    <rect x="469" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.14"/>
+    <rect x="491" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.17"/>
+    <rect x="513" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.19"/>
+    <rect x="535" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.21"/>
+    <rect x="557" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.23"/>
+    <rect x="579" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.25"/>
+    <rect x="601" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.27"/>
+    <rect x="623" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.29"/>
+    <rect x="645" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.32"/>
+    <rect x="667" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.34"/>
+    <rect x="689" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.36"/>
+    <rect x="711" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.38"/>
+    <rect x="733" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.40"/>
+    <rect x="755" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.42"/>
+    <rect x="777" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.44"/>
+    <rect x="799" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.47"/>
+    <rect x="821" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.49"/>
+    <rect x="843" y="286" width="18" height="30" rx="4" fill="#4A5063" fill-opacity="0.51"/>
+    <rect x="865" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.76"/>
+    <rect x="887" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.77"/>
+    <rect x="909" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.78"/>
+    <rect x="931" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.79"/>
+    <rect x="953" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.80"/>
+    <rect x="975" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.81"/>
+    <rect x="997" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.82"/>
+    <rect x="1019" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.83"/>
+    <rect x="1041" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.84"/>
+    <rect x="1063" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.85"/>
+    <rect x="1085" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.86"/>
+    <rect x="1107" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.87"/>
+    <rect x="1129" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.88"/>
+    <rect x="1151" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.89"/>
+    <rect x="1173" y="286" width="18" height="30" rx="4" fill="#EF4444" fill-opacity="0.90"/>
+    <rect x="859" y="280" width="338" height="42" rx="9" fill="none" stroke="#EF4444" stroke-width="2.5"/>
+    <path d="M1209 276 L1209 326" stroke="#F4F5F8" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <g font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="16">
+    <text x="403" y="350" fill="#6B7082">older frames fall out of memory</text>
+    <text x="1028" y="350" fill="#F08A8A" text-anchor="middle">saved as clip.mp4</text>
+    <text x="1209" y="350" fill="#F4F5F8" text-anchor="middle" font-weight="600">Alt+F10</text>
+  </g>
+</svg>
